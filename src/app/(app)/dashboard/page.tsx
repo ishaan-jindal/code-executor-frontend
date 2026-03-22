@@ -135,10 +135,10 @@ export default function DashboardPage() {
             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${ratePct > 50
-                    ? "bg-green-500"
-                    : ratePct > 20
-                      ? "bg-amber-400"
-                      : "bg-red-500"
+                  ? "bg-green-500"
+                  : ratePct > 20
+                    ? "bg-amber-400"
+                    : "bg-red-500"
                   }`}
                 style={{ width: `${ratePct}%` }}
               />

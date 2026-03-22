@@ -55,7 +55,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     const refresh = Cookies.get("refresh_token");
     try {
       if (refresh) await api.post("/auth/logout", { refreshToken: refresh });
-    } catch {}
+    } catch { }
     Cookies.remove("access_token");
     Cookies.remove("refresh_token");
     set({ user: null, isAdmin: false });

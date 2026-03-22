@@ -35,13 +35,12 @@ export default function Topnav({
           <span className="text-xs text-gray-400">Rate limit</span>
           <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${
-                pct > 50
+              className={`h-full rounded-full transition-all ${pct > 50
                   ? "bg-green-500"
                   : pct > 20
-                  ? "bg-amber-400"
-                  : "bg-red-500"
-              }`}
+                    ? "bg-amber-400"
+                    : "bg-red-500"
+                }`}
               style={{ width: `${pct}%` }}
             />
           </div>

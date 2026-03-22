@@ -89,9 +89,8 @@ export default function RegisterPage() {
                 setUsername(e.target.value);
                 setFieldErrors((p) => ({ ...p, username: undefined }));
               }}
-              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                fieldErrors.username ? "border-red-300" : "border-gray-200"
-              }`}
+              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${fieldErrors.username ? "border-red-300" : "border-gray-200"
+                }`}
               placeholder="johndoe"
               autoComplete="username"
               required
@@ -112,9 +111,8 @@ export default function RegisterPage() {
                 setEmail(e.target.value);
                 setFieldErrors((p) => ({ ...p, email: undefined }));
               }}
-              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                fieldErrors.email ? "border-red-300" : "border-gray-200"
-              }`}
+              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${fieldErrors.email ? "border-red-300" : "border-gray-200"
+                }`}
               placeholder="john@example.com"
               autoComplete="email"
               required
@@ -135,9 +133,8 @@ export default function RegisterPage() {
                 setPassword(e.target.value);
                 setFieldErrors((p) => ({ ...p, password: undefined }));
               }}
-              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                fieldErrors.password ? "border-red-300" : "border-gray-200"
-              }`}
+              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${fieldErrors.password ? "border-red-300" : "border-gray-200"
+                }`}
               placeholder="8+ characters"
               autoComplete="new-password"
               required

@@ -187,8 +187,8 @@ export default function WebhooksPage() {
                       type="button"
                       onClick={() => toggleEvent(event)}
                       className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${formEvents.includes(event)
-                          ? "bg-blue-50 border-blue-300 text-blue-700"
-                          : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                        ? "bg-blue-50 border-blue-300 text-blue-700"
+                        : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
                         }`}
                     >
                       {event}
@@ -379,8 +379,8 @@ export default function WebhooksPage() {
                       <td className="px-4 py-3">
                         <span
                           className={`text-xs px-2 py-0.5 rounded-full font-medium ${d.status === "success"
-                              ? "bg-green-50 text-green-700"
-                              : "bg-red-50 text-red-700"
+                            ? "bg-green-50 text-green-700"
+                            : "bg-red-50 text-red-700"
                             }`}
                         >
                           {d.status}

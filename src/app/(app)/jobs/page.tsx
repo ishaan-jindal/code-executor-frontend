@@ -209,9 +209,9 @@ export default function JobsPage() {
                         key={jobId(job)}
                         onClick={() => openJob(job)}
                         className={`border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${selectedJob &&
-                            jobId(selectedJob) === jobId(job)
-                            ? "bg-blue-50"
-                            : "hover:bg-gray-50"
+                          jobId(selectedJob) === jobId(job)
+                          ? "bg-blue-50"
+                          : "hover:bg-gray-50"
                           }`}
                       >
                         <td className="px-4 py-3 font-mono text-xs text-gray-500">

@@ -20,7 +20,7 @@ export default function Sidebar() {
     item.adminOnly ? isAdmin : true
   );
 
- 
+
   if (isLoading) {
     return (
       <aside className="w-52 shrink-0 border-r border-gray-100 bg-gray-50" />
@@ -42,11 +42,10 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${
-                active
+              className={`flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${active
                   ? "bg-white text-gray-900 border border-gray-200 font-medium shadow-sm"
                   : "text-gray-500 hover:text-gray-900 hover:bg-white"
-              }`}
+                }`}
             >
               {item.label}
             </Link>
@@ -65,9 +64,8 @@ export default function Sidebar() {
                 {user.username}
               </p>
               <span
-                className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                  TIER_COLORS[user.tier] ?? TIER_COLORS.free
-                }`}
+                className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full font-medium ${TIER_COLORS[user.tier] ?? TIER_COLORS.free
+                  }`}
               >
                 {user.tier}
               </span>
