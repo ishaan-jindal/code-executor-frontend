@@ -51,21 +51,21 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
-  try {
-    const res = await executionService.listJobs({ limit: 5 });
-    capture(res);
-    const { jobs, total } = res.data.data;
-    setRecentJobs(jobs);
-    setTotalJobs(total);
-    setSuccessCount(
-      jobs.filter((j) => j.status === "ACCEPTED").length
-    );
-  } catch (err) {
-    console.error("Dashboard load error:", err);
-  } finally {
-    setLoading(false);
-  }
-}
+      try {
+        const res = await executionService.listJobs({ limit: 5 });
+        capture(res);
+        const { jobs, total } = res.data.data;
+        setRecentJobs(jobs);
+        setTotalJobs(total);
+        setSuccessCount(
+          jobs.filter((j) => j.status === "ACCEPTED").length
+        );
+      } catch (err) {
+        console.error("Dashboard load error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
     load();
   }, []);
 
@@ -134,13 +134,12 @@ export default function DashboardPage() {
             </div>
             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  ratePct > 50
+                className={`h-full rounded-full transition-all duration-500 ${ratePct > 50
                     ? "bg-green-500"
                     : ratePct > 20
-                    ? "bg-amber-400"
-                    : "bg-red-500"
-                }`}
+                      ? "bg-amber-400"
+                      : "bg-red-500"
+                  }`}
                 style={{ width: `${ratePct}%` }}
               />
             </div>
@@ -218,9 +217,8 @@ export default function DashboardPage() {
                     </td>
                     <td className="px-3 py-3">
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          STATUS_STYLES[job.status]
-                        }`}
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[job.status]
+                          }`}
                       >
                         {STATUS_LABEL[job.status]}
                       </span>

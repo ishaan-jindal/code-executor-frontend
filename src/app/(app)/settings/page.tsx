@@ -8,10 +8,10 @@ import PageShell from "@/components/layout/PageShell";
 import api from "@/lib/api";
 
 const TIER_LIMITS: Record<string, { requests: number; timeout: string }> = {
-  free:         { requests: 10,  timeout: "2s"  },
-  starter:      { requests: 50,  timeout: "2s"  },
+  free: { requests: 10, timeout: "2s" },
+  starter: { requests: 50, timeout: "2s" },
   professional: { requests: 100, timeout: "10s" },
-  enterprise:   { requests: 500, timeout: "30s" },
+  enterprise: { requests: 500, timeout: "30s" },
 };
 
 export default function SettingsPage() {
@@ -145,14 +145,14 @@ export default function SettingsPage() {
               </p>
             </div>
             {user?.tier !== "enterprise" && (
-              
-                <a
-                  href="/pricing"
-                  className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                >
-                  Upgrade
-                </a>
-              )}            
+
+              <a
+                href="/pricing"
+                className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                Upgrade
+              </a>
+            )}
           </div>
         </div>
 
@@ -246,11 +246,10 @@ export default function SettingsPage() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`w-full px-3 py-2 text-sm border rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  confirmPassword && confirmPassword !== newPassword
+                className={`w-full px-3 py-2 text-sm border rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${confirmPassword && confirmPassword !== newPassword
                     ? "border-red-300"
                     : "border-gray-200"
-                }`}
+                  }`}
                 placeholder="••••••••"
                 required
               />

@@ -186,11 +186,10 @@ export default function WebhooksPage() {
                       key={event}
                       type="button"
                       onClick={() => toggleEvent(event)}
-                      className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                        formEvents.includes(event)
+                      className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${formEvents.includes(event)
                           ? "bg-blue-50 border-blue-300 text-blue-700"
                           : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
-                      }`}
+                        }`}
                     >
                       {event}
                     </button>
@@ -265,9 +264,8 @@ export default function WebhooksPage() {
                 <div key={webhook.id} className="p-4">
                   <div className="flex items-start gap-3">
                     <div
-                      className={`mt-1 w-2 h-2 rounded-full shrink-0 ${
-                        webhook.active ? "bg-green-400" : "bg-gray-300"
-                      }`}
+                      className={`mt-1 w-2 h-2 rounded-full shrink-0 ${webhook.active ? "bg-green-400" : "bg-gray-300"
+                        }`}
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">
@@ -380,11 +378,10 @@ export default function WebhooksPage() {
                     >
                       <td className="px-4 py-3">
                         <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            d.status === "success"
+                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${d.status === "success"
                               ? "bg-green-50 text-green-700"
                               : "bg-red-50 text-red-700"
-                          }`}
+                            }`}
                         >
                           {d.status}
                         </span>

@@ -208,12 +208,11 @@ export default function JobsPage() {
                       <tr
                         key={jobId(job)}
                         onClick={() => openJob(job)}
-                        className={`border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${
-                          selectedJob &&
-                          jobId(selectedJob) === jobId(job)
+                        className={`border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${selectedJob &&
+                            jobId(selectedJob) === jobId(job)
                             ? "bg-blue-50"
                             : "hover:bg-gray-50"
-                        }`}
+                          }`}
                       >
                         <td className="px-4 py-3 font-mono text-xs text-gray-500">
                           {jobId(job).slice(0, 8)}…
@@ -225,9 +224,8 @@ export default function JobsPage() {
                         </td>
                         <td className="px-3 py-3">
                           <span
-                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              STATUS_STYLES[job.status]
-                            }`}
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[job.status]
+                              }`}
                           >
                             {STATUS_LABEL[job.status]}
                           </span>
@@ -300,9 +298,8 @@ export default function JobsPage() {
                   <div className="flex justify-between">
                     <span className="text-gray-400">Status</span>
                     <span
-                      className={`px-2 py-0.5 rounded-full font-medium ${
-                        STATUS_STYLES[selectedJob.status]
-                      }`}
+                      className={`px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[selectedJob.status]
+                        }`}
                     >
                       {STATUS_LABEL[selectedJob.status]}
                     </span>
