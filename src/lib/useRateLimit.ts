@@ -1,11 +1,8 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { AxiosResponse } from "axios";
+import type { RateLimit } from "./types";
 
-export interface RateLimit {
-  limit: number | null;
-  remaining: number | null;
-  reset: number | null;
-}
+export type { RateLimit };
 
 export function useRateLimit() {
   const [rateLimit, setRateLimit] = useState<RateLimit>({
@@ -14,7 +11,7 @@ export function useRateLimit() {
     reset: null,
   });
 
-  const capture = (response: AxiosResponse) => {
+  const capture = useCallback((response: AxiosResponse) => {
     const limit = response.headers["x-ratelimit-limit"];
     const remaining = response.headers["x-ratelimit-remaining"];
     const reset = response.headers["x-ratelimit-reset"];
@@ -26,7 +23,7 @@ export function useRateLimit() {
       });
     }
     return response;
-  };
+  }, []);
 
   return { rateLimit, capture };
 }

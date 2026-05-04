@@ -1,270 +1,109 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { executionService, Job, JobStatus, Language } from "@/lib/services";
+import { executionService } from "@/lib/services";
 import { useRateLimit } from "@/lib/useRateLimit";
 import PageShell from "@/components/layout/PageShell";
-
-const STATUS_STYLES: Record<JobStatus, string> = {
-  ACCEPTED: "bg-green-50 text-green-700",
-  RUNTIME_ERROR: "bg-red-50 text-red-700",
-  COMPILE_ERROR: "bg-red-50 text-red-700",
-  TIME_LIMIT_EXCEEDED: "bg-amber-50 text-amber-700",
-  QUEUED: "bg-gray-100 text-gray-600",
-  RUNNING: "bg-blue-50 text-blue-700",
-};
-
-const STATUS_LABEL: Record<JobStatus, string> = {
-  ACCEPTED: "Accepted",
-  RUNTIME_ERROR: "Runtime error",
-  COMPILE_ERROR: "Compile error",
-  TIME_LIMIT_EXCEEDED: "Timeout",
-  QUEUED: "Queued",
-  RUNNING: "Running",
-};
-
-function timeAgo(ts: number): string {
-  const diff = Math.floor((Date.now() - ts) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
+import { timeAgo, getJobId } from "@/lib/utils";
+import { STATUS_LABEL, STATUS_DOT_COLOR } from "@/lib/constants";
+import type { Job, JobStatus, Language } from "@/lib/types";
 
 const PAGE_SIZE = 20;
 
 export default function JobsPage() {
   const { rateLimit, capture } = useRateLimit();
-
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  // Filters
   const [statusFilter, setStatusFilter] = useState<JobStatus | "">("");
   const [langFilter, setLangFilter] = useState<Language | "">("");
-
-  // Selected job for detail drawer
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [jobCode, setJobCode] = useState<string | null>(null);
   const [codeLoading, setCodeLoading] = useState(false);
 
-  const load = useCallback(
-    async (p: number, status: JobStatus | "", lang: Language | "") => {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await executionService.listJobs({
-          limit: PAGE_SIZE,
-          offset: p * PAGE_SIZE,
-          ...(status ? { status } : {}),
-          ...(lang ? { language: lang } : {}),
-        });
-        capture(res);
-        const { jobs: fetched, total: t } = res.data.data;
-        setJobs(fetched);
-        setTotal(t);
-      } catch {
-        setError("Failed to load jobs.");
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+  const load = useCallback(async (p: number, status: JobStatus | "", lang: Language | "") => {
+    setLoading(true); setError("");
+    try {
+      const res = await executionService.listJobs({ limit: PAGE_SIZE, offset: p * PAGE_SIZE, ...(status ? { status } : {}), ...(lang ? { language: lang } : {}) });
+      capture(res);
+      setJobs(res.data.data.jobs); setTotal(res.data.data.total);
+    } catch { setError("Failed to load jobs."); } finally { setLoading(false); }
+  }, [capture]);
 
-  useEffect(() => {
-    load(page, statusFilter, langFilter);
-  }, [page, statusFilter, langFilter, load]);
+  useEffect(() => { load(page, statusFilter, langFilter); }, [page, statusFilter, langFilter, load]);
 
   async function openJob(job: Job) {
-    setSelectedJob(job);
-    setJobCode(null);
-    setCodeLoading(true);
-    const id = job.id ?? job.job_id ?? "";
-    try {
-      const res = await executionService.getJobCode(id);
-      setJobCode(res.data.data.code ?? null);
-    } catch {
-      setJobCode(null);
-    } finally {
-      setCodeLoading(false);
-    }
+    setSelectedJob(job); setJobCode(null); setCodeLoading(true);
+    try { const res = await executionService.getJobCode(getJobId(job)); setJobCode(res.data.data.code ?? null); }
+    catch { setJobCode(null); } finally { setCodeLoading(false); }
   }
 
-  function handleFilterChange(
-    status: JobStatus | "",
-    lang: Language | ""
-  ) {
-    setPage(0);
-    setStatusFilter(status);
-    setLangFilter(lang);
-    setSelectedJob(null);
+  function handleFilterChange(status: JobStatus | "", lang: Language | "") {
+    setPage(0); setStatusFilter(status); setLangFilter(lang); setSelectedJob(null);
   }
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
-  const jobId = (job: Job) => job.id ?? job.job_id ?? "—";
 
   return (
-    <PageShell title="Job history" rateLimit={rateLimit}>
-      <div className="max-w-5xl space-y-5">
-
+    <PageShell title="Job History" rateLimit={rateLimit}>
+      <div style={{ maxWidth: 1100, display: "flex", flexDirection: "column", gap: 20 }}>
         <div>
-          <h2 className="text-lg font-medium text-gray-900">Job history</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            All your past executions. Click a row to inspect output and code.
-          </p>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Job History</h2>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "2px 0 0" }}>All past executions. Click a row to inspect.</p>
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-2">
-          <select
-            title="statusfilter"
-            value={statusFilter}
-            onChange={(e) =>
-              handleFilterChange(e.target.value as JobStatus | "", langFilter)
-            }
-            className="text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <select title="statusfilter" value={statusFilter} onChange={(e) => handleFilterChange(e.target.value as JobStatus | "", langFilter)}
+            className="input-dark" style={{ width: "auto", padding: "6px 10px", fontSize: 12 }}>
             <option value="">All statuses</option>
-            <option value="ACCEPTED">Accepted</option>
-            <option value="RUNTIME_ERROR">Runtime error</option>
-            <option value="COMPILE_ERROR">Compile error</option>
-            <option value="TIME_LIMIT_EXCEEDED">Timeout</option>
-            <option value="QUEUED">Queued</option>
-            <option value="RUNNING">Running</option>
+            <option value="ACCEPTED">Accepted</option><option value="RUNTIME_ERROR">Runtime error</option>
+            <option value="COMPILE_ERROR">Compile error</option><option value="TIME_LIMIT_EXCEEDED">Timeout</option>
+            <option value="QUEUED">Queued</option><option value="RUNNING">Running</option>
           </select>
-
-          <select
-            title="langfilter"
-            value={langFilter}
-            onChange={(e) =>
-              handleFilterChange(statusFilter, e.target.value as Language | "")
-            }
-            className="text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All languages</option>
-            <option value="python">Python</option>
-            <option value="c">C</option>
+          <select title="langfilter" value={langFilter} onChange={(e) => handleFilterChange(statusFilter, e.target.value as Language | "")}
+            className="input-dark" style={{ width: "auto", padding: "6px 10px", fontSize: 12 }}>
+            <option value="">All languages</option><option value="python">Python</option><option value="c">C</option>
           </select>
-
-          {(statusFilter || langFilter) && (
-            <button
-              onClick={() => handleFilterChange("", "")}
-              className="text-xs text-gray-400 hover:text-gray-700 transition-colors px-2 py-2"
-            >
-              Clear filters
-            </button>
-          )}
-
-          <div className="flex-1" />
-
-          <span className="text-xs text-gray-400">
-            {total} job{total !== 1 ? "s" : ""}
-          </span>
+          {(statusFilter || langFilter) && <button onClick={() => handleFilterChange("", "")} className="btn-ghost btn-sm">Clear</button>}
+          <div style={{ flex: 1 }} />
+          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{total} job{total !== 1 ? "s" : ""}</span>
         </div>
 
-        <div className="flex gap-5 items-start">
+        <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
           {/* Table */}
-          <div className="flex-1 bg-white border border-gray-100 rounded-xl overflow-hidden">
+          <div className="glass-card-static" style={{ flex: 1, overflow: "hidden" }}>
             {loading ? (
-              <div className="px-5 py-10 text-center text-sm text-gray-400">
-                Loading…
-              </div>
+              <div style={{ padding: "60px 20px", textAlign: "center" }}><div className="animate-shimmer" style={{ height: 20, borderRadius: 4, maxWidth: 200, margin: "0 auto" }} /></div>
             ) : error ? (
-              <div className="px-5 py-10 text-center text-sm text-red-500">
-                {error}
-              </div>
+              <div style={{ padding: "60px 20px", textAlign: "center", color: "var(--red)", fontSize: 13 }}>{error}</div>
             ) : jobs.length === 0 ? (
-              <div className="px-5 py-10 text-center text-sm text-gray-400">
-                No jobs found.
-              </div>
+              <div style={{ padding: "60px 20px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>No jobs found.</div>
             ) : (
               <>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left text-xs font-medium text-gray-400 px-4 py-3">
-                        Job ID
-                      </th>
-                      <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
-                        Lang
-                      </th>
-                      <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
-                        Status
-                      </th>
-                      <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
-                        Runtime
-                      </th>
-                      <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
-                        Submitted
-                      </th>
-                    </tr>
-                  </thead>
+                <table className="table-dark">
+                  <thead><tr><th>Job ID</th><th>Lang</th><th>Status</th><th>Runtime</th><th>Submitted</th></tr></thead>
                   <tbody>
                     {jobs.map((job) => (
-                      <tr
-                        key={jobId(job)}
-                        onClick={() => openJob(job)}
-                        className={`border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${selectedJob &&
-                          jobId(selectedJob) === jobId(job)
-                          ? "bg-blue-50"
-                          : "hover:bg-gray-50"
-                          }`}
-                      >
-                        <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                          {jobId(job).slice(0, 8)}…
-                        </td>
-                        <td className="px-3 py-3">
-                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                            {job.language}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3">
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[job.status]
-                              }`}
-                          >
-                            {STATUS_LABEL[job.status]}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 text-xs text-gray-500 tabular-nums">
-                          {job.metrics?.exec_time_ms != null
-                            ? `${job.metrics.exec_time_ms}ms`
-                            : "—"}
-                        </td>
-                        <td className="px-3 py-3 text-xs text-gray-400">
-                          {timeAgo(job.created_at)}
-                        </td>
+                      <tr key={getJobId(job)} onClick={() => openJob(job)} style={{ cursor: "pointer" }}
+                        className={selectedJob && getJobId(selectedJob) === getJobId(job) ? "active" : ""}>
+                        <td><code style={{ fontSize: 12, color: "var(--text-muted)" }}>{getJobId(job).slice(0, 8)}…</code></td>
+                        <td><span className="badge" style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-secondary)" }}>{job.language}</span></td>
+                        <td><span className="badge" style={{ background: `${STATUS_DOT_COLOR[job.status]}15`, color: STATUS_DOT_COLOR[job.status] }}>
+                          <span className="status-dot" style={{ background: STATUS_DOT_COLOR[job.status] }} />{STATUS_LABEL[job.status]}</span></td>
+                        <td style={{ fontVariantNumeric: "tabular-nums" }}>{job.metrics?.exec_time_ms != null ? `${job.metrics.exec_time_ms}ms` : "—"}</td>
+                        <td style={{ color: "var(--text-muted)" }}>{timeAgo(job.created_at)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-
-                {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-                    <button
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
-                      disabled={page === 0}
-                      className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-xs text-gray-400">
-                      Page {page + 1} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() =>
-                        setPage((p) => Math.min(totalPages - 1, p + 1))
-                      }
-                      disabled={page >= totalPages - 1}
-                      className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors"
-                    >
-                      Next
-                    </button>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid var(--border-default)" }}>
+                    <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="btn-secondary btn-sm">Previous</button>
+                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Page {page + 1} of {totalPages}</span>
+                    <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="btn-secondary btn-sm">Next</button>
                   </div>
                 )}
               </>
@@ -273,111 +112,46 @@ export default function JobsPage() {
 
           {/* Detail drawer */}
           {selectedJob && (
-            <div className="w-72 shrink-0 bg-white border border-gray-100 rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                <p className="text-xs font-medium text-gray-900">
-                  Job detail
-                </p>
-                <button
-                  onClick={() => setSelectedJob(null)}
-                  className="text-xs text-gray-400 hover:text-gray-600"
-                >
-                  Close
-                </button>
+            <div className="glass-card-static animate-slide-in-right" style={{ width: 300, flexShrink: 0, overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--border-default)" }}>
+                <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", margin: 0 }}>Job Detail</p>
+                <button onClick={() => setSelectedJob(null)} className="btn-ghost btn-sm">Close</button>
               </div>
-
-              <div className="p-4 space-y-4 text-xs">
-                {/* Meta */}
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">ID</span>
-                    <span className="font-mono text-gray-600 truncate ml-2 max-w-[140px]">
-                      {jobId(selectedJob)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Status</span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[selectedJob.status]
-                        }`}
-                    >
-                      {STATUS_LABEL[selectedJob.status]}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Language</span>
-                    <span className="text-gray-600">{selectedJob.language}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Submitted</span>
-                    <span className="text-gray-600">
-                      {timeAgo(selectedJob.created_at)}
-                    </span>
-                  </div>
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16, fontSize: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[
+                    { l: "ID", v: getJobId(selectedJob) },
+                    { l: "Status", v: STATUS_LABEL[selectedJob.status] },
+                    { l: "Language", v: selectedJob.language },
+                    { l: "Submitted", v: timeAgo(selectedJob.created_at) },
+                  ].map((r) => (
+                    <div key={r.l} style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--text-muted)" }}>{r.l}</span>
+                      <span style={{ color: "var(--text-secondary)", fontFamily: r.l === "ID" ? "var(--font-jetbrains), monospace" : undefined, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.v}</span>
+                    </div>
+                  ))}
                 </div>
-
-                {/* Metrics */}
                 {selectedJob.metrics && (
                   <div>
-                    <p className="text-gray-400 mb-2 font-medium">Metrics</p>
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Queue wait</span>
-                        <span className="tabular-nums text-gray-600">
-                          {selectedJob.metrics.queue_wait_ms}ms
-                        </span>
+                    <p style={{ color: "var(--text-muted)", fontWeight: 500, margin: "0 0 8px" }}>Metrics</p>
+                    {[{ l: "Queue", v: `${selectedJob.metrics.queue_wait_ms}ms` }, { l: "Compile", v: `${selectedJob.metrics.compile_time_ms}ms` }, { l: "Execute", v: `${selectedJob.metrics.exec_time_ms}ms` }, { l: "Total", v: `${selectedJob.metrics.total_time_ms}ms` }].map((r) => (
+                      <div key={r.l} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ color: "var(--text-muted)" }}>{r.l}</span>
+                        <span style={{ color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums", fontWeight: r.l === "Total" ? 500 : 400 }}>{r.v}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Compile</span>
-                        <span className="tabular-nums text-gray-600">
-                          {selectedJob.metrics.compile_time_ms}ms
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Execute</span>
-                        <span className="tabular-nums text-gray-600">
-                          {selectedJob.metrics.exec_time_ms}ms
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Total</span>
-                        <span className="tabular-nums font-medium text-gray-700">
-                          {selectedJob.metrics.total_time_ms}ms
-                        </span>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 )}
-
-                {/* Output */}
                 {selectedJob.results && selectedJob.results.length > 0 && (
                   <div>
-                    <p className="text-gray-400 mb-2 font-medium">Output</p>
-                    {selectedJob.results[0].stdout && (
-                      <pre className="bg-gray-50 rounded-lg p-2.5 text-gray-700 font-mono text-xs leading-relaxed overflow-x-auto whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
-                        {selectedJob.results[0].stdout}
-                      </pre>
-                    )}
-                    {selectedJob.results[0].stderr && (
-                      <pre className="mt-2 bg-red-50 rounded-lg p-2.5 text-red-600 font-mono text-xs leading-relaxed overflow-x-auto whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
-                        {selectedJob.results[0].stderr}
-                      </pre>
-                    )}
+                    <p style={{ color: "var(--text-muted)", fontWeight: 500, margin: "0 0 8px" }}>Output</p>
+                    {selectedJob.results[0].stdout && <pre style={{ background: "rgba(255,255,255,0.03)", borderRadius: "var(--radius-sm)", padding: 10, fontSize: 11, fontFamily: "var(--font-jetbrains), monospace", color: "var(--text-secondary)", lineHeight: 1.5, overflowX: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 120, overflowY: "auto", margin: 0 }}>{selectedJob.results[0].stdout}</pre>}
+                    {selectedJob.results[0].stderr && <pre style={{ marginTop: 8, background: "var(--red-muted)", borderRadius: "var(--radius-sm)", padding: 10, fontSize: 11, fontFamily: "var(--font-jetbrains), monospace", color: "var(--red)", lineHeight: 1.5, overflowX: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 120, overflowY: "auto" }}>{selectedJob.results[0].stderr}</pre>}
                   </div>
                 )}
-
-                {/* Code */}
                 <div>
-                  <p className="text-gray-400 mb-2 font-medium">Code</p>
-                  {codeLoading ? (
-                    <p className="text-gray-400">Loading…</p>
-                  ) : jobCode ? (
-                    <pre className="bg-gray-50 rounded-lg p-2.5 text-gray-700 font-mono text-xs leading-relaxed overflow-x-auto whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
-                      {jobCode}
-                    </pre>
-                  ) : (
-                    <p className="text-gray-400">Not available.</p>
-                  )}
+                  <p style={{ color: "var(--text-muted)", fontWeight: 500, margin: "0 0 8px" }}>Code</p>
+                  {codeLoading ? <p style={{ color: "var(--text-muted)" }}>Loading…</p> : jobCode ? <pre style={{ background: "rgba(255,255,255,0.03)", borderRadius: "var(--radius-sm)", padding: 10, fontSize: 11, fontFamily: "var(--font-jetbrains), monospace", color: "var(--text-secondary)", lineHeight: 1.5, overflowX: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 160, overflowY: "auto", margin: 0 }}>{jobCode}</pre> : <p style={{ color: "var(--text-muted)", margin: 0 }}>Not available.</p>}
                 </div>
               </div>
             </div>

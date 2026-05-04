@@ -2,43 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth";
-import { executionService, Job, JobStatus } from "@/lib/services";
+import { executionService } from "@/lib/services";
 import { useRateLimit } from "@/lib/useRateLimit";
 import PageShell from "@/components/layout/PageShell";
 import Link from "next/link";
-
-const STATUS_STYLES: Record<JobStatus, string> = {
-  ACCEPTED: "bg-green-50 text-green-700",
-  RUNTIME_ERROR: "bg-red-50 text-red-700",
-  COMPILE_ERROR: "bg-red-50 text-red-700",
-  TIME_LIMIT_EXCEEDED: "bg-amber-50 text-amber-700",
-  QUEUED: "bg-gray-100 text-gray-600",
-  RUNNING: "bg-blue-50 text-blue-700",
-};
-
-const STATUS_LABEL: Record<JobStatus, string> = {
-  ACCEPTED: "Accepted",
-  RUNTIME_ERROR: "Runtime error",
-  COMPILE_ERROR: "Compile error",
-  TIME_LIMIT_EXCEEDED: "Timeout",
-  QUEUED: "Queued",
-  RUNNING: "Running",
-};
-
-const TIER_LIMITS: Record<string, number> = {
-  free: 10,
-  starter: 50,
-  professional: 100,
-  enterprise: 500,
-};
-
-function timeAgo(ts: number): string {
-  const diff = Math.floor((Date.now() - ts) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
+import { timeAgo, getJobId } from "@/lib/utils";
+import { STATUS_LABEL, STATUS_DOT_COLOR, TIER_LIMITS } from "@/lib/constants";
+import type { Job } from "@/lib/types";
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -46,7 +16,6 @@ export default function DashboardPage() {
 
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
   const [totalJobs, setTotalJobs] = useState(0);
-  const [successCount, setSuccessCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,9 +26,6 @@ export default function DashboardPage() {
         const { jobs, total } = res.data.data;
         setRecentJobs(jobs);
         setTotalJobs(total);
-        setSuccessCount(
-          jobs.filter((j) => j.status === "ACCEPTED").length
-        );
       } catch (err) {
         console.error("Dashboard load error:", err);
       } finally {
@@ -67,12 +33,9 @@ export default function DashboardPage() {
       }
     }
     load();
-  }, []);
+  }, [capture]);
 
-  const successRate =
-    totalJobs > 0 ? Math.round((successCount / totalJobs) * 100) : null;
-
-  const tierLimit = TIER_LIMITS[user?.tier ?? "free"];
+  const tierConfig = TIER_LIMITS[user?.tier ?? "free"];
   const ratePct =
     rateLimit.remaining != null && rateLimit.limit != null
       ? Math.round((rateLimit.remaining / rateLimit.limit) * 100)
@@ -80,73 +43,190 @@ export default function DashboardPage() {
 
   return (
     <PageShell title="Dashboard" rateLimit={rateLimit}>
-      <div className="max-w-4xl space-y-6">
+      <div style={{ maxWidth: 900, display: "flex", flexDirection: "column", gap: 24 }}>
 
         {/* Greeting */}
         <div>
-          <h2 className="text-lg font-medium text-gray-900">
+          <h2
+            style={{
+              fontSize: 22,
+              fontWeight: 600,
+              color: "var(--text-primary)",
+              margin: 0,
+              letterSpacing: "-0.02em",
+            }}
+          >
             Welcome back{user ? `, ${user.username}` : ""}.
           </h2>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              margin: "4px 0 0",
+            }}
+          >
             Here&apos;s what&apos;s happening with your account.
           </p>
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-4 gap-3">
-          <div className="bg-white border border-gray-100 rounded-xl p-4">
-            <p className="text-xs text-gray-400 mb-1">Total executions</p>
-            <p className="text-2xl font-medium text-gray-900">
-              {loading ? "—" : totalJobs}
-            </p>
-          </div>
-          <div className="bg-white border border-gray-100 rounded-xl p-4">
-            <p className="text-xs text-gray-400 mb-1">Success rate</p>
-            <p className="text-2xl font-medium text-gray-900">
-              {loading || successRate === null ? "—" : `${successRate}%`}
-            </p>
-          </div>
-          <div className="bg-white border border-gray-100 rounded-xl p-4">
-            <p className="text-xs text-gray-400 mb-1">Plan</p>
-            <p className="text-2xl font-medium text-gray-900 capitalize">
-              {user?.tier ?? "—"}
-            </p>
-          </div>
-          <div className="bg-white border border-gray-100 rounded-xl p-4">
-            <p className="text-xs text-gray-400 mb-1">Rate limit</p>
-            <p className="text-2xl font-medium text-gray-900">
-              {tierLimit}
-              <span className="text-sm font-normal text-gray-400">/min</span>
-            </p>
-          </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 14,
+          }}
+        >
+          {[
+            {
+              label: "Total Executions",
+              value: loading ? "—" : totalJobs.toLocaleString(),
+            },
+            {
+              label: "Current Plan",
+              value: user?.tier ?? "—",
+              capitalize: true,
+            },
+            {
+              label: "Rate Limit",
+              value: `${tierConfig.requests}`,
+              suffix: "/min",
+            },
+            {
+              label: "Status",
+              value: "Operational",
+              dot: "var(--green)",
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="glass-card glow-border"
+              style={{ padding: "18px 20px" }}
+            >
+              <p
+                style={{
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "var(--text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  margin: "0 0 8px",
+                }}
+              >
+                {stat.label}
+              </p>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                {stat.dot && (
+                  <div
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: "50%",
+                      background: stat.dot,
+                      marginRight: 4,
+                      flexShrink: 0,
+                      animation: "pulse-glow 2s ease-in-out infinite",
+                    }}
+                  />
+                )}
+                <span
+                  style={{
+                    fontSize: 26,
+                    fontWeight: 600,
+                    color: "var(--text-primary)",
+                    letterSpacing: "-0.02em",
+                    textTransform: stat.capitalize ? "capitalize" : undefined,
+                  }}
+                >
+                  {stat.value}
+                </span>
+                {stat.suffix && (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 400,
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {stat.suffix}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Rate limit bar */}
         {ratePct !== null && (
-          <div className="bg-white border border-gray-100 rounded-xl p-4">
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-xs font-medium text-gray-600">
+          <div className="glass-card-static" style={{ padding: "18px 20px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 10,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: "var(--text-secondary)",
+                  margin: 0,
+                }}
+              >
                 Rate limit — this minute
               </p>
-              <p className="text-xs text-gray-400">
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-muted)",
+                  margin: 0,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
                 {rateLimit.remaining} / {rateLimit.limit} remaining
               </p>
             </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              style={{
+                height: 6,
+                background: "rgba(255,255,255,0.06)",
+                borderRadius: 3,
+                overflow: "hidden",
+              }}
+            >
               <div
-                className={`h-full rounded-full transition-all duration-500 ${ratePct > 50
-                  ? "bg-green-500"
-                  : ratePct > 20
-                    ? "bg-amber-400"
-                    : "bg-red-500"
-                  }`}
-                style={{ width: `${ratePct}%` }}
+                style={{
+                  height: "100%",
+                  borderRadius: 3,
+                  background:
+                    ratePct > 50
+                      ? "var(--green)"
+                      : ratePct > 20
+                        ? "var(--amber)"
+                        : "var(--red)",
+                  width: `${ratePct}%`,
+                  transition: "width 500ms ease",
+                }}
               />
             </div>
             {user?.tier !== "enterprise" && (
-              <p className="text-xs text-gray-400 mt-2">
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-muted)",
+                  margin: "10px 0 0",
+                }}
+              >
                 Need more?{" "}
-                <Link href="/settings" className="text-blue-600 hover:underline">
+                <Link
+                  href="/settings"
+                  style={{
+                    color: "var(--accent-light)",
+                    textDecoration: "none",
+                  }}
+                >
                   Upgrade your plan
                 </Link>
               </p>
@@ -155,80 +235,105 @@ export default function DashboardPage() {
         )}
 
         {/* Recent jobs */}
-        <div className="bg-white border border-gray-100 rounded-xl">
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-            <p className="text-sm font-medium text-gray-900">Recent jobs</p>
+        <div className="glass-card-static" style={{ overflow: "hidden" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "14px 20px",
+              borderBottom: "1px solid var(--border-default)",
+            }}
+          >
+            <p
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                color: "var(--text-primary)",
+                margin: 0,
+              }}
+            >
+              Recent jobs
+            </p>
             <Link
               href="/jobs"
-              className="text-xs text-blue-600 hover:underline"
+              style={{
+                fontSize: 12,
+                color: "var(--accent-light)",
+                textDecoration: "none",
+              }}
             >
-              View all
+              View all →
             </Link>
           </div>
 
           {loading ? (
-            <div className="px-5 py-8 text-center text-sm text-gray-400">
-              Loading…
+            <div style={{ padding: "40px 20px", textAlign: "center" }}>
+              <div className="animate-shimmer" style={{ height: 20, borderRadius: 4, maxWidth: 200, margin: "0 auto" }} />
             </div>
           ) : recentJobs.length === 0 ? (
-            <div className="px-5 py-8 text-center">
-              <p className="text-sm text-gray-400">No jobs yet.</p>
+            <div style={{ padding: "40px 20px", textAlign: "center" }}>
+              <p style={{ fontSize: 14, color: "var(--text-muted)", margin: "0 0 8px" }}>
+                No jobs yet.
+              </p>
               <Link
                 href="/playground"
-                className="mt-2 inline-block text-xs text-blue-600 hover:underline"
+                style={{ fontSize: 13, color: "var(--accent-light)", textDecoration: "none" }}
               >
-                Run your first execution
+                Run your first execution →
               </Link>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <table className="table-dark">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left text-xs font-medium text-gray-400 px-5 py-2.5">
-                    Job ID
-                  </th>
-                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-2.5">
-                    Language
-                  </th>
-                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-2.5">
-                    Status
-                  </th>
-                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-2.5">
-                    Runtime
-                  </th>
-                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-2.5">
-                    Submitted
-                  </th>
+                <tr>
+                  <th>Job ID</th>
+                  <th>Language</th>
+                  <th>Status</th>
+                  <th>Runtime</th>
+                  <th>Submitted</th>
                 </tr>
               </thead>
               <tbody>
                 {recentJobs.map((job) => (
-                  <tr
-                    key={job.id ?? job.job_id}
-                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-5 py-3 font-mono text-xs text-gray-500 truncate max-w-[140px]">
-                      {job.id ?? job.job_id}
+                  <tr key={getJobId(job)}>
+                    <td>
+                      <code style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                        {getJobId(job).slice(0, 12)}…
+                      </code>
                     </td>
-                    <td className="px-3 py-3">
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                    <td>
+                      <span
+                        className="badge"
+                        style={{
+                          background: "rgba(255,255,255,0.04)",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
                         {job.language}
                       </span>
                     </td>
-                    <td className="px-3 py-3">
+                    <td>
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[job.status]
-                          }`}
+                        className="badge"
+                        style={{
+                          background: `${STATUS_DOT_COLOR[job.status]}15`,
+                          color: STATUS_DOT_COLOR[job.status],
+                        }}
                       >
+                        <span
+                          className="status-dot"
+                          style={{ background: STATUS_DOT_COLOR[job.status] }}
+                        />
                         {STATUS_LABEL[job.status]}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-xs text-gray-500 tabular-nums">
+                    <td style={{ fontVariantNumeric: "tabular-nums" }}>
                       {job.metrics != null
                         ? `${job.metrics.exec_time_ms}ms`
                         : "—"}
                     </td>
-                    <td className="px-3 py-3 text-xs text-gray-400">
+                    <td style={{ color: "var(--text-muted)" }}>
                       {timeAgo(job.created_at)}
                     </td>
                   </tr>
@@ -237,7 +342,6 @@ export default function DashboardPage() {
             </table>
           )}
         </div>
-
       </div>
     </PageShell>
   );

@@ -1,5 +1,7 @@
+"use client";
+
 import Topnav from "./Topnav";
-import { useRateLimit } from "@/lib/useRateLimit";
+import type { RateLimit } from "@/lib/types";
 
 export default function PageShell({
   title,
@@ -7,14 +9,21 @@ export default function PageShell({
   children,
 }: {
   title: string;
-  rateLimit?: ReturnType<typeof useRateLimit>["rateLimit"];
+  rateLimit?: RateLimit;
   children: React.ReactNode;
 }) {
   return (
     <>
       <Topnav title={title} rateLimit={rateLimit} />
-      <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
-        {children}
+      <main
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: 28,
+          background: "var(--bg-root)",
+        }}
+      >
+        <div className="animate-fade-in">{children}</div>
       </main>
     </>
   );

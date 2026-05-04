@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import { authService } from "@/lib/services";
 import Link from "next/link";
+import { getApiErrorMessage, getApiStatus } from "@/lib/errors";
 
 interface FieldErrors {
   username?: string;
@@ -12,10 +13,15 @@ interface FieldErrors {
   password?: string;
 }
 
-function validate(username: string, email: string, password: string): FieldErrors {
+function validate(
+  username: string,
+  email: string,
+  password: string
+): FieldErrors {
   const errors: FieldErrors = {};
   if (username.length < 3) errors.username = "Must be at least 3 characters";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "Enter a valid email";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    errors.email = "Enter a valid email";
   if (password.length < 8) errors.password = "Must be at least 8 characters";
   return errors;
 }
@@ -47,10 +53,9 @@ export default function RegisterPage() {
       const { data } = await authService.register(username, email, password);
       await setTokens(data.data.accessToken, data.data.refreshToken);
       router.push("/dashboard");
-    } catch (err: any) {
-      const msg = err.response?.data?.error || "Registration failed";
-      // Surface field-specific conflicts from the API
-      if (err.response?.status === 409) {
+    } catch (err: unknown) {
+      const msg = getApiErrorMessage(err, "Registration failed");
+      if (getApiStatus(err) === 409) {
         if (msg.toLowerCase().includes("username")) {
           setFieldErrors({ username: "Username already taken" });
         } else if (msg.toLowerCase().includes("email")) {
@@ -66,106 +71,260 @@ export default function RegisterPage() {
     }
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm">
+  const inputStyle = (hasError?: string) => ({
+    borderColor: hasError
+      ? "rgba(239, 68, 68, 0.4)"
+      : undefined,
+  });
 
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-medium text-gray-900 tracking-tight">
-            exec<span className="text-blue-600">.run</span>
-          </h1>
-          <p className="mt-2 text-sm text-gray-500">Create your free account</p>
+  return (
+    <div
+      className="mesh-bg"
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        className="animate-fade-in"
+        style={{ width: "100%", maxWidth: 400 }}
+      >
+        {/* Brand */}
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 12,
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "var(--radius-md)",
+                background:
+                  "linear-gradient(135deg, var(--accent), var(--accent-light))",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 17,
+                fontWeight: 700,
+                color: "#000",
+              }}
+            >
+              R
+            </div>
+            <span
+              style={{
+                fontSize: 24,
+                fontWeight: 700,
+                color: "var(--text-primary)",
+                letterSpacing: "-0.03em",
+              }}
+            >
+              Runnix
+            </span>
+          </div>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", margin: 0 }}>
+            Create your free account
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              Username
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => {
-                setUsername(e.target.value);
-                setFieldErrors((p) => ({ ...p, username: undefined }));
-              }}
-              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${fieldErrors.username ? "border-red-300" : "border-gray-200"
-                }`}
-              placeholder="johndoe"
-              autoComplete="username"
-              required
-            />
-            {fieldErrors.username && (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.username}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setFieldErrors((p) => ({ ...p, email: undefined }));
-              }}
-              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${fieldErrors.email ? "border-red-300" : "border-gray-200"
-                }`}
-              placeholder="john@example.com"
-              autoComplete="email"
-              required
-            />
-            {fieldErrors.email && (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setFieldErrors((p) => ({ ...p, password: undefined }));
-              }}
-              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${fieldErrors.password ? "border-red-300" : "border-gray-200"
-                }`}
-              placeholder="8+ characters"
-              autoComplete="new-password"
-              required
-            />
-            {fieldErrors.password && (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
-            )}
-          </div>
-
-          {serverError && (
-            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {serverError}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg transition-colors"
+        {/* Form card */}
+        <div className="glass-card-static" style={{ padding: 28 }}>
+          <form
+            onSubmit={handleSubmit}
+            style={{ display: "flex", flexDirection: "column", gap: 18 }}
           >
-            {loading ? "Creating account…" : "Create account"}
-          </button>
-        </form>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: "var(--text-secondary)",
+                  marginBottom: 6,
+                }}
+              >
+                Username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setFieldErrors((p) => ({ ...p, username: undefined }));
+                }}
+                className="input-dark"
+                style={inputStyle(fieldErrors.username)}
+                placeholder="johndoe"
+                autoComplete="username"
+                required
+              />
+              {fieldErrors.username && (
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--red)",
+                    marginTop: 4,
+                    marginBottom: 0,
+                  }}
+                >
+                  {fieldErrors.username}
+                </p>
+              )}
+            </div>
 
-        <p className="mt-6 text-center text-xs text-gray-500">
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: "var(--text-secondary)",
+                  marginBottom: 6,
+                }}
+              >
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setFieldErrors((p) => ({ ...p, email: undefined }));
+                }}
+                className="input-dark"
+                style={inputStyle(fieldErrors.email)}
+                placeholder="john@example.com"
+                autoComplete="email"
+                required
+              />
+              {fieldErrors.email && (
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--red)",
+                    marginTop: 4,
+                    marginBottom: 0,
+                  }}
+                >
+                  {fieldErrors.email}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: "var(--text-secondary)",
+                  marginBottom: 6,
+                }}
+              >
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setFieldErrors((p) => ({ ...p, password: undefined }));
+                }}
+                className="input-dark"
+                style={inputStyle(fieldErrors.password)}
+                placeholder="8+ characters"
+                autoComplete="new-password"
+                required
+              />
+              {fieldErrors.password && (
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--red)",
+                    marginTop: 4,
+                    marginBottom: 0,
+                  }}
+                >
+                  {fieldErrors.password}
+                </p>
+              )}
+            </div>
+
+            {serverError && (
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "var(--red)",
+                  background: "var(--red-muted)",
+                  border: "1px solid rgba(239, 68, 68, 0.2)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "10px 14px",
+                }}
+              >
+                {serverError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary"
+              style={{ width: "100%", marginTop: 4 }}
+            >
+              {loading ? (
+                <>
+                  <span
+                    style={{
+                      width: 14,
+                      height: 14,
+                      border: "2px solid rgba(0,0,0,0.2)",
+                      borderTopColor: "#000",
+                      borderRadius: "50%",
+                      animation: "spin 0.6s linear infinite",
+                    }}
+                  />
+                  Creating account…
+                </>
+              ) : (
+                "Create account"
+              )}
+            </button>
+          </form>
+        </div>
+
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: 13,
+            color: "var(--text-muted)",
+            marginTop: 24,
+          }}
+        >
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 hover:underline">
+          <Link
+            href="/login"
+            style={{
+              color: "var(--accent-light)",
+              textDecoration: "none",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.textDecoration = "underline")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.textDecoration = "none")
+            }
+          >
             Sign in
           </Link>
         </p>
-
       </div>
     </div>
   );

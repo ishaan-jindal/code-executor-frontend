@@ -1,61 +1,16 @@
 import api from "./api";
+import type {
+  JobStatus,
+  Language,
+  Job,
+  SubmitResponse,
+  JobsResponse,
+} from "./types";
 
-export type JobStatus =
-  | "QUEUED"
-  | "RUNNING"
-  | "ACCEPTED"
-  | "RUNTIME_ERROR"
-  | "TIME_LIMIT_EXCEEDED"
-  | "COMPILE_ERROR";
+// Re-export types for convenience
+export type { JobStatus, Language, Job, SubmitResponse, JobsResponse };
 
-export type Language = "python" | "c";
-
-export interface JobResult {
-  stdin: string;
-  status: JobStatus;
-  stdout: string;
-  stderr: string;
-  exit_code: number;
-}
-
-export interface JobMetrics {
-  queue_wait_ms: number;
-  compile_time_ms: number;
-  exec_time_ms: number;
-  total_time_ms: number;
-}
-
-export interface Job {
-  id?: string;
-  job_id?: string;
-  userId: string;
-  language: Language;
-  status: JobStatus;
-  code?: string;
-  stdin?: string;
-  inputs?: string[];
-  metrics?: JobMetrics;
-  results?: JobResult[];
-  created_at: number;
-}
-
-export interface SubmitResponse {
-  job_id: string;
-  status: JobStatus;
-}
-
-export interface JobsResponse {
-  jobs: Job[];
-  total: number;
-  limit: number;
-  offset: number;
-  filters: {
-    status: string | null;
-    language: string | null;
-    from: string | null;
-    to: string | null;
-  };
-}
+/* ─── Auth ─── */
 
 export const authService = {
   register: (username: string, email: string, password: string) =>
@@ -69,6 +24,25 @@ export const authService = {
 
   me: () => api.get("/auth/me"),
 
+  /**
+   * Placeholder — endpoint `PATCH /auth/me` does not exist yet on backend.
+   * Will return a clear error until the backend implements this.
+   */
+  updateProfile: (_payload: { username: string; email: string }) =>
+    Promise.reject(new Error("Profile editing is not yet available. This feature is coming soon.")),
+
+  /**
+   * Placeholder — endpoint `POST /auth/change-password` does not exist yet on backend.
+   */
+  changePassword: (_payload: { currentPassword: string; newPassword: string }) =>
+    Promise.reject(new Error("Password change is not yet available. This feature is coming soon.")),
+
+  /**
+   * Placeholder — endpoint `DELETE /auth/me` does not exist yet on backend.
+   */
+  deleteMe: () =>
+    Promise.reject(new Error("Account deletion is not yet available. This feature is coming soon.")),
+
   logoutAll: () => api.post("/auth/logout-all"),
 
   generateApiKey: (name: string) =>
@@ -80,12 +54,18 @@ export const authService = {
     api.delete(`/auth/api-keys/${keyId}`),
 };
 
+/* ─── Code Execution ─── */
+
 export const executionService = {
+  /**
+   * Submit code for execution.
+   * Uses `inputs` array as the API expects, NOT the deprecated `stdin` field.
+   */
   submit: (language: Language, code: string, stdin?: string) =>
     api.post<{ success: boolean; data: SubmitResponse }>("/submit", {
       language,
       code,
-      ...(stdin ? { stdin } : {}),
+      ...(stdin ? { inputs: [stdin] } : {}),
     }),
 
   getResult: (jobId: string) =>
@@ -103,6 +83,8 @@ export const executionService = {
     api.get<{ success: boolean; data: JobsResponse }>("/jobs", { params }),
 };
 
+/* ─── Webhooks ─── */
+
 export const webhookService = {
   create: (url: string, events: string[], secret?: string) =>
     api.post("/webhooks", { url, events, ...(secret ? { secret } : {}) }),
@@ -115,6 +97,8 @@ export const webhookService = {
 
   delete: (id: string) => api.delete(`/webhooks/${id}`),
 };
+
+/* ─── Admin ─── */
 
 export const adminService = {
   listUsers: (page = 0, limit = 20) =>
@@ -131,7 +115,12 @@ export const adminService = {
 
   revokeAdmin: (userId: string) =>
     api.post(`/admin/users/${userId}/revoke-admin`),
+
+  deleteUser: (userId: string) =>
+    api.delete(`/admin/users/${userId}`),
 };
+
+/* ─── Public / Unauthenticated ─── */
 
 export const publicService = {
   languages: () => api.get("/languages"),

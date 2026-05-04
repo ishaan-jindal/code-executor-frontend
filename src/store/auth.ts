@@ -1,16 +1,9 @@
 import { create } from "zustand";
 import Cookies from "js-cookie";
 import api from "@/lib/api";
+import type { User } from "@/lib/types";
 
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  tier: "free" | "starter" | "professional" | "enterprise";
-  rateLimit: number;
-  created_at: number;
-  role?: "user" | "admin";
-}
+export type { User };
 
 interface AuthState {
   user: User | null;
